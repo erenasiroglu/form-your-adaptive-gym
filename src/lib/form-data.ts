@@ -161,7 +161,7 @@ const baseWeight = (ex: Exercise, exp: Experience): number => {
 };
 
 export function generateWorkout(profile: UserProfile): PlannedExercise[] {
-  const inj = new Set(profile.injuries.filter((i) => i !== "none"));
+  const inj = new Set<Injury>(profile.injuries.filter((i) => i !== "none"));
   const eq = new Set(profile.equipment);
   const targets = REP_TARGETS[profile.goal];
 
@@ -214,7 +214,7 @@ export function findAlternatives(
 ): Exercise[] {
   const blocked = new Set([...blockedEquipment, ex.equipment]);
   const eq = new Set(profile.equipment);
-  const inj = new Set(profile.injuries.filter((i) => i !== "none"));
+  const inj = new Set<Injury>(profile.injuries.filter((i) => i !== "none"));
   return EXERCISES.filter(
     (e) =>
       e.id !== ex.id &&
