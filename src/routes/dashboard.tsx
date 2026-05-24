@@ -41,7 +41,26 @@ function Dashboard() {
         </h1>
       </section>
 
+      {/* AI coach insight */}
+      <div className="surface-card mb-4 overflow-hidden rounded-3xl bg-primary p-1">
+        <div className="rounded-[20px] bg-background p-5">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.3em] text-primary">
+              FORM Coach
+            </span>
+            <span className="font-mono text-[10px] text-muted-foreground">
+              09:14
+            </span>
+          </div>
+          <p className="text-sm leading-relaxed">
+            Recovery dropped slightly mid-week. Lower-body volume was reduced
+            today to maintain progression — pressing intensity is unchanged.
+          </p>
+        </div>
+      </div>
+
       <div className="grid grid-cols-12 gap-4">
+
         {/* Readiness */}
         <div className="surface-card col-span-7 rounded-3xl p-6 md:col-span-5">
           <div className="mb-8 flex items-start justify-between">
