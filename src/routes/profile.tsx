@@ -1,19 +1,31 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/form/AppShell";
 import { getProfile, EQUIPMENT_LIST, type UserProfile } from "@/lib/form-data";
+import {
+  createTranslator,
+  getStoredLocale,
+  translateEquipment,
+  translateExperience,
+  translateGoal,
+  useTranslation,
+} from "@/i18n";
 
 export const Route = createFileRoute("/profile")({
-  head: () => ({
-    meta: [
-      { title: "Profile · FORM" },
-      { name: "description", content: "Your FORM profile and settings." },
-    ],
-  }),
+  head: () => {
+    const { t } = createTranslator(getStoredLocale());
+    return {
+      meta: [
+        { title: t("profile.meta.title") },
+        { name: "description", content: t("profile.meta.description") },
+      ],
+    };
+  },
   component: Profile,
 });
 
 function Profile() {
+  const { t } = useTranslation();
   const [p, setP] = useState<UserProfile | null>(null);
   useEffect(() => setP(getProfile()), []);
   if (!p) return null;
@@ -23,24 +35,34 @@ function Profile() {
       <div className="mb-8 flex items-center gap-4">
         <div className="size-16 rounded-full border border-border bg-surface-2" />
         <div>
-          <h1 className="text-2xl font-bold tracking-display">Athlete</h1>
-          <p className="text-xs text-muted-foreground">FORM member · 2026</p>
+          <h1 className="text-2xl font-bold tracking-display">{t("profile.athlete")}</h1>
+          <p className="text-xs text-muted-foreground">{t("profile.memberSince")}</p>
         </div>
       </div>
 
       <div className="space-y-4">
-        <Row label="Goal" value={p.goal.replace("-", " ")} />
-        <Row label="Experience" value={p.experience} />
-        <Row label="Frequency" value={`${p.frequency}× / week`} />
-        <Row label="Session length" value={`${p.duration} min`} />
+        <Row label={t("profile.goal")} value={translateGoal(p.goal, t)} />
+        <Row label={t("profile.experience")} value={translateExperience(p.experience, t)} />
         <Row
-          label="Limitations"
-          value={p.injuries.includes("none") ? "None" : p.injuries.join(", ")}
+          label={t("profile.frequency")}
+          value={t("common.perWeek", { count: p.frequency })}
+        />
+        <Row
+          label={t("profile.sessionLength")}
+          value={t("common.minDuration", { count: p.duration })}
+        />
+        <Row
+          label={t("profile.limitations")}
+          value={
+            p.injuries.includes("none")
+              ? t("common.none")
+              : p.injuries.map((i) => t(`onboarding.injuries.${i}`)).join(", ")
+          }
         />
 
         <div className="surface-card rounded-3xl p-6">
           <h3 className="mb-4 text-[10px] font-semibold uppercase tracking-[0.25em] text-muted-foreground">
-            Equipment ({p.equipment.length})
+            {t("profile.equipment", { count: p.equipment.length })}
           </h3>
           <div className="flex flex-wrap gap-2">
             {p.equipment.map((e) => (
@@ -48,7 +70,9 @@ function Profile() {
                 key={e}
                 className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary"
               >
-                {EQUIPMENT_LIST.find((x) => x.id === e)?.label ?? e}
+                {EQUIPMENT_LIST.find((x) => x.id === e)
+                  ? translateEquipment(e, t)
+                  : e}
               </span>
             ))}
           </div>
@@ -58,13 +82,13 @@ function Profile() {
           to="/onboarding"
           className="block rounded-full bg-primary py-3 text-center text-sm font-bold text-primary-foreground"
         >
-          Recalibrate profile
+          {t("profile.recalibrate")}
         </Link>
         <Link
           to="/"
           className="block rounded-full border border-border bg-surface py-3 text-center text-sm font-semibold text-muted-foreground"
         >
-          Sign out
+          {t("profile.signOut")}
         </Link>
       </div>
     </AppShell>

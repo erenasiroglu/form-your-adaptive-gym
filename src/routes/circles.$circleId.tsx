@@ -1,14 +1,25 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { AppShell } from "@/components/form/AppShell";
 import { CIRCLES } from "@/lib/form-data";
+import { createTranslator, getStoredLocale, useTranslation } from "@/i18n";
 
 export const Route = createFileRoute("/circles/$circleId")({
   head: ({ params }) => {
+    const { t } = createTranslator(getStoredLocale());
     const c = CIRCLES.find((x) => x.id === params.circleId);
+    const nameKey = `circles.items.${params.circleId}.name`;
+    const name = c ? t(nameKey) : t("circles.title");
+    const descKey = `circles.items.${params.circleId}.description`;
+    const description = c ? t(descKey) : t("circles.meta.description");
     return {
       meta: [
-        { title: `${c?.name ?? "Circle"} · FORM` },
-        { name: "description", content: c?.description ?? "FORM circle" },
+        {
+          title: `${name.startsWith("circles.items.") && c ? c.name : name} · FORM`,
+        },
+        {
+          name: "description",
+          content: description.startsWith("circles.items.") && c ? c.description : description,
+        },
       ],
     };
   },
@@ -22,7 +33,15 @@ export const Route = createFileRoute("/circles/$circleId")({
 
 function CirclePage() {
   const { circle } = Route.useLoaderData();
+  const { t } = useTranslation();
   const sorted = [...circle.members].sort((a, b) => b.volume - a.volume);
+
+  const nameKey = `circles.items.${circle.id}.name`;
+  const name = t(nameKey);
+  const descKey = `circles.items.${circle.id}.description`;
+  const description = t(descKey);
+  const challengeKey = `circles.items.${circle.id}.challenge`;
+  const challenge = circle.challenge ? t(challengeKey) : undefined;
 
   return (
     <AppShell>
@@ -30,25 +49,29 @@ function CirclePage() {
         to="/circles"
         className="mb-4 inline-block text-[10px] font-semibold uppercase tracking-[0.25em] text-muted-foreground"
       >
-        ← All circles
+        {t("circles.allCircles")}
       </Link>
       <section className="mb-6">
-        <h1 className="text-4xl font-bold tracking-display">{circle.name}</h1>
-        <p className="mt-2 text-sm text-muted-foreground">{circle.description}</p>
+        <h1 className="text-4xl font-bold tracking-display">
+          {name.startsWith("circles.items.") ? circle.name : name}
+        </h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {description.startsWith("circles.items.") ? circle.description : description}
+        </p>
       </section>
 
-      {circle.challenge && (
+      {circle.challenge && challenge && !challenge.startsWith("circles.items.") && (
         <div className="surface-card mb-6 rounded-3xl bg-primary/5 p-6">
           <span className="text-[10px] font-semibold uppercase tracking-[0.3em] text-primary">
-            Active challenge
+            {t("circles.activeChallenge")}
           </span>
-          <p className="mt-2 text-xl font-bold tracking-display">{circle.challenge}</p>
+          <p className="mt-2 text-xl font-bold tracking-display">{challenge}</p>
         </div>
       )}
 
       <div className="surface-card rounded-3xl p-6">
         <h3 className="mb-5 text-[10px] font-semibold uppercase tracking-[0.25em] text-muted-foreground">
-          Leaderboard · weekly volume
+          {t("circles.leaderboard")}
         </h3>
         <ol className="divide-y divide-border">
           {sorted.map((m, i) => {
@@ -63,10 +86,10 @@ function CirclePage() {
                 </span>
                 <div className="flex-1">
                   <div className={`text-sm font-semibold ${isYou ? "text-primary" : ""}`}>
-                    {m.name}
+                    {isYou ? t("circles.you") : m.name}
                   </div>
                   <div className="mt-0.5 text-[10px] uppercase tracking-widest text-muted-foreground">
-                    {m.streak} day streak
+                    {t("common.dayStreak", { count: m.streak })}
                   </div>
                 </div>
                 <span className="font-mono text-sm">

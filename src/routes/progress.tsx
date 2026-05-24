@@ -1,13 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/form/AppShell";
+import { createTranslator, getStoredLocale, translateExercise, useTranslation } from "@/i18n";
 
 export const Route = createFileRoute("/progress")({
-  head: () => ({
-    meta: [
-      { title: "Progress · FORM" },
-      { name: "description", content: "Training consistency, volume, and PRs." },
-    ],
-  }),
+  head: () => {
+    const { t } = createTranslator(getStoredLocale());
+    return {
+      meta: [
+        { title: t("progress.meta.title") },
+        { name: "description", content: t("progress.meta.description") },
+      ],
+    };
+  },
   component: Progress,
 });
 
@@ -23,37 +27,47 @@ const weeks = [
 ];
 
 function Progress() {
+  const { t } = useTranslation();
   const max = Math.max(...weeks.map((w) => w.vol));
+
+  const prs = [
+    { id: "bb-squat", val: "165kg × 3", dateKey: "days2" as const },
+    { id: "bb-bench", val: "110kg × 5", dateKey: "week1" as const },
+    { id: "bb-rdl", val: "140kg × 8", dateKey: "weeks2" as const },
+    { id: "pullup", val: "+30kg × 6", dateKey: "weeks3" as const },
+  ];
+
   return (
     <AppShell>
       <section className="mb-6">
         <span className="text-[10px] font-semibold uppercase tracking-[0.3em] text-primary">
-          Trajectory
+          {t("progress.trajectory")}
         </span>
-        <h1 className="mt-2 text-4xl font-bold tracking-display">Progress</h1>
+        <h1 className="mt-2 text-4xl font-bold tracking-display">{t("progress.title")}</h1>
       </section>
 
       <div className="grid grid-cols-12 gap-4">
         <div className="surface-card col-span-6 rounded-3xl p-6">
           <h3 className="mb-6 text-[10px] font-semibold uppercase tracking-[0.25em] text-muted-foreground">
-            Weekly volume
+            {t("progress.weeklyVolume")}
           </h3>
           <div className="text-4xl font-bold tracking-display">
-            92<span className="text-base text-muted-foreground">k kg</span>
+            {t("progress.volumeValue")}
+            <span className="text-base text-muted-foreground">{t("progress.volumeUnit")}</span>
           </div>
-          <div className="mt-1 text-xs text-primary">↑ 12% vs last week</div>
+          <div className="mt-1 text-xs text-primary">{t("progress.volumeChange")}</div>
         </div>
         <div className="surface-card col-span-6 rounded-3xl p-6">
           <h3 className="mb-6 text-[10px] font-semibold uppercase tracking-[0.25em] text-muted-foreground">
-            Consistency
+            {t("progress.consistency")}
           </h3>
           <div className="text-4xl font-bold tracking-display">94%</div>
-          <div className="mt-1 text-xs text-muted-foreground">8-week avg</div>
+          <div className="mt-1 text-xs text-muted-foreground">{t("progress.consistencyAvg")}</div>
         </div>
 
         <div className="surface-card col-span-12 rounded-3xl p-6">
           <h3 className="mb-6 text-[10px] font-semibold uppercase tracking-[0.25em] text-muted-foreground">
-            Volume trend
+            {t("progress.volumeTrend")}
           </h3>
           <div className="flex h-40 items-end justify-between gap-2">
             {weeks.map((w, i) => (
@@ -76,20 +90,17 @@ function Progress() {
 
         <div className="surface-card col-span-12 rounded-3xl p-6">
           <h3 className="mb-5 text-[10px] font-semibold uppercase tracking-[0.25em] text-muted-foreground">
-            Personal records
+            {t("progress.personalRecords")}
           </h3>
           <ul className="divide-y divide-border">
-            {[
-              { ex: "Barbell Back Squat", val: "165kg × 3", date: "2 days ago" },
-              { ex: "Barbell Bench Press", val: "110kg × 5", date: "1 week ago" },
-              { ex: "Romanian Deadlift", val: "140kg × 8", date: "2 weeks ago" },
-              { ex: "Weighted Pull-up", val: "+30kg × 6", date: "3 weeks ago" },
-            ].map((pr) => (
-              <li key={pr.ex} className="flex items-center justify-between py-3">
+            {prs.map((pr) => (
+              <li key={pr.id} className="flex items-center justify-between py-3">
                 <div>
-                  <div className="text-sm font-semibold">{pr.ex}</div>
+                  <div className="text-sm font-semibold">
+                    {translateExercise(pr.id, t)}
+                  </div>
                   <div className="mt-0.5 text-[10px] uppercase tracking-widest text-muted-foreground">
-                    {pr.date}
+                    {t(`progress.prDates.${pr.dateKey}`)}
                   </div>
                 </div>
                 <div className="font-mono text-sm text-primary">{pr.val}</div>

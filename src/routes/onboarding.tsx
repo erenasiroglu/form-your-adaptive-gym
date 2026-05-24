@@ -4,9 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   DEFAULT_PROFILE,
   EQUIPMENT_LIST,
-  buildAnalysis,
   saveProfile,
-  type Equipment,
   type Frustration,
   type Goal,
   type Injury,
@@ -15,17 +13,26 @@ import {
   type UserProfile,
 } from "@/lib/form-data";
 import { AmbientGlow } from "@/components/form/AmbientGlow";
+import { LanguageSwitcher } from "@/components/form/LanguageSwitcher";
+import {
+  buildLocalizedAnalysis,
+  createTranslator,
+  getStoredLocale,
+  translateEquipment,
+  useLocale,
+  useTranslation,
+} from "@/i18n";
 
 export const Route = createFileRoute("/onboarding")({
-  head: () => ({
-    meta: [
-      { title: "Analyze My Body · FORM" },
-      {
-        name: "description",
-        content: "A 90-second conversation. FORM learns your body, your gym, and your recovery.",
-      },
-    ],
-  }),
+  head: () => {
+    const { t } = createTranslator(getStoredLocale());
+    return {
+      meta: [
+        { title: t("onboarding.meta.title") },
+        { name: "description", content: t("onboarding.meta.description") },
+      ],
+    };
+  },
   component: Onboarding,
 });
 
@@ -58,6 +65,8 @@ const STAGES_WITH_PROGRESS: Stage[] = [
 
 function Onboarding() {
   const navigate = useNavigate();
+  const locale = useLocale();
+  const { t } = useTranslation();
   const [stage, setStage] = useState<Stage>("intro");
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const [photo, setPhoto] = useState<string | null>(null);
@@ -65,16 +74,15 @@ function Onboarding() {
   const update = <K extends keyof UserProfile>(k: K, v: UserProfile[K]) =>
     setProfile((p) => ({ ...p, [k]: v }));
 
-  // Drive analyzing → results
   useEffect(() => {
     if (stage !== "analyzing") return;
-    const t = setTimeout(() => {
-      const analysis = buildAnalysis(profile);
+    const timer = setTimeout(() => {
+      const analysis = buildLocalizedAnalysis(profile, locale);
       setProfile((p) => ({ ...p, analysis }));
       setStage("results");
     }, 3600);
-    return () => clearTimeout(t);
-  }, [stage, profile]);
+    return () => clearTimeout(timer);
+  }, [stage, profile, locale]);
 
   // Drive generating → plan
   useEffect(() => {
@@ -89,6 +97,9 @@ function Onboarding() {
     <div className="relative min-h-screen">
       <AmbientGlow />
       <div className="mx-auto flex min-h-screen max-w-md flex-col px-6 py-6">
+        <div className="mb-4 flex justify-end">
+          <LanguageSwitcher />
+        </div>
         {stageIndex >= 0 && (
           <>
             <div className="mb-8 flex items-center gap-1.5">
@@ -102,7 +113,10 @@ function Onboarding() {
               ))}
             </div>
             <div className="mb-6 text-[10px] font-semibold uppercase tracking-[0.25em] text-muted-foreground">
-              Calibration · {stageIndex + 1} of {STAGES_WITH_PROGRESS.length}
+              {t("onboarding.calibration", {
+                current: stageIndex + 1,
+                total: STAGES_WITH_PROGRESS.length,
+              })}
             </div>
           </>
         )}
@@ -120,8 +134,8 @@ function Onboarding() {
 
             {stage === "frequency" && (
               <Step
-                title="How many days can you realistically train?"
-                sub="Be honest. We design for the life you actually have."
+                title={t("onboarding.frequency.title")}
+                sub={t("onboarding.frequency.sub")}
               >
                 <div className="grid grid-cols-5 gap-2">
                   {[2, 3, 4, 5, 6].map((n) => (
@@ -146,19 +160,13 @@ function Onboarding() {
 
             {stage === "physique" && (
               <Step
-                title="How would you describe your current physique?"
-                sub="Rough self-assessment. The photo step refines this."
+                title={t("onboarding.physique.title")}
+                sub={t("onboarding.physique.sub")}
               >
                 <div className="space-y-2">
                   {(
-                    [
-                      ["lean", "Lean", "Low body fat, defined"],
-                      ["athletic", "Athletic", "Built and functional"],
-                      ["average", "Average", "Untrained but healthy"],
-                      ["soft", "Soft", "Carrying extra body fat"],
-                      ["stocky", "Stocky", "Strong frame, dense build"],
-                    ] as [Physique, string, string][]
-                  ).map(([id, label, sub]) => (
+                    ["lean", "athletic", "average", "soft", "stocky"] as Physique[]
+                  ).map((id) => (
                     <Row
                       key={id}
                       active={profile.physique === id}
@@ -166,8 +174,8 @@ function Onboarding() {
                         update("physique", id);
                         setStage("frustration");
                       }}
-                      title={label}
-                      sub={sub}
+                      title={t(`onboarding.physique.${id}.label`)}
+                      sub={t(`onboarding.physique.${id}.sub`)}
                     />
                   ))}
                 </div>
@@ -176,20 +184,20 @@ function Onboarding() {
 
             {stage === "frustration" && (
               <Step
-                title="What's frustrating you most right now?"
-                sub="Your real bottleneck shapes everything that follows."
+                title={t("onboarding.frustration.title")}
+                sub={t("onboarding.frustration.sub")}
               >
                 <div className="space-y-2">
                   {(
                     [
-                      ["no-results", "I'm not seeing results"],
-                      ["no-time", "I don't have time to train"],
-                      ["no-energy", "I'm always exhausted"],
-                      ["plateau", "I've hit a plateau"],
-                      ["lost-motivation", "I've lost motivation"],
-                      ["injury-prone", "I keep getting hurt"],
-                    ] as [Frustration, string][]
-                  ).map(([id, label]) => (
+                      "no-results",
+                      "no-time",
+                      "no-energy",
+                      "plateau",
+                      "lost-motivation",
+                      "injury-prone",
+                    ] as Frustration[]
+                  ).map((id) => (
                     <Row
                       key={id}
                       active={profile.frustration === id}
@@ -197,7 +205,7 @@ function Onboarding() {
                         update("frustration", id);
                         setStage("location");
                       }}
-                      title={label}
+                      title={t(`onboarding.frustration.${id}`)}
                     />
                   ))}
                 </div>
@@ -206,18 +214,18 @@ function Onboarding() {
 
             {stage === "location" && (
               <Step
-                title="Where do you train most often?"
-                sub="Your environment dictates what's programmable."
+                title={t("onboarding.location.title")}
+                sub={t("onboarding.location.sub")}
               >
                 <div className="grid grid-cols-2 gap-3">
                   {(
                     [
-                      ["commercial-gym", "Commercial gym", "Full equipment"],
-                      ["home-gym", "Home gym", "Limited setup"],
-                      ["hotel-travel", "Hotel / travel", "Variable"],
-                      ["hybrid", "Hybrid", "Gym + home mix"],
-                    ] as [Location, string, string][]
-                  ).map(([id, label, sub]) => (
+                      "commercial-gym",
+                      "home-gym",
+                      "hotel-travel",
+                      "hybrid",
+                    ] as Location[]
+                  ).map((id) => (
                     <Choice
                       key={id}
                       active={profile.location === id}
@@ -225,8 +233,8 @@ function Onboarding() {
                         update("location", id);
                         setStage("equipment");
                       }}
-                      title={label}
-                      sub={sub}
+                      title={t(`onboarding.location.${id}.label`)}
+                      sub={t(`onboarding.location.${id}.sub`)}
                     />
                   ))}
                 </div>
@@ -235,8 +243,8 @@ function Onboarding() {
 
             {stage === "equipment" && (
               <Step
-                title="What equipment is actually available?"
-                sub="Toggle what your gym truly has. We won't program the rest."
+                title={t("onboarding.equipment.title")}
+                sub={t("onboarding.equipment.sub")}
               >
                 <div className="grid grid-cols-2 gap-2">
                   {EQUIPMENT_LIST.map((e) => {
@@ -258,7 +266,7 @@ function Onboarding() {
                             : "border-border bg-surface"
                         }`}
                       >
-                        <span>{e.label}</span>
+                        <span>{translateEquipment(e.id, t)}</span>
                         <span
                           className={`size-1.5 rounded-full ${
                             active ? "bg-primary" : "bg-border"
@@ -269,25 +277,20 @@ function Onboarding() {
                   })}
                 </div>
                 <FooterButton onClick={() => setStage("injuries")}>
-                  Continue
+                  {t("common.continue")}
                 </FooterButton>
               </Step>
             )}
 
             {stage === "injuries" && (
               <Step
-                title="Anything we need to route around?"
-                sub="We'll engineer alternatives, not skip the muscle."
+                title={t("onboarding.injuries.title")}
+                sub={t("onboarding.injuries.sub")}
               >
                 <div className="flex flex-wrap gap-2">
                   {(
-                    [
-                      ["none", "None"],
-                      ["shoulder", "Shoulder"],
-                      ["knee", "Knee"],
-                      ["lower-back", "Lower back"],
-                    ] as [Injury, string][]
-                  ).map(([id, label]) => {
+                    ["none", "shoulder", "knee", "lower-back"] as Injury[]
+                  ).map((id) => {
                     const active = profile.injuries.includes(id);
                     return (
                       <button
@@ -314,29 +317,26 @@ function Onboarding() {
                             : "border-border bg-surface text-foreground"
                         }`}
                       >
-                        {label}
+                        {t(`onboarding.injuries.${id}`)}
                       </button>
                     );
                   })}
                 </div>
-                <FooterButton onClick={() => setStage("goal")}>Continue</FooterButton>
+                <FooterButton onClick={() => setStage("goal")}>
+                  {t("common.continue")}
+                </FooterButton>
               </Step>
             )}
 
             {stage === "goal" && (
               <Step
-                title="What's the outcome you want most?"
-                sub="We'll bias the program — and the projection — to this."
+                title={t("onboarding.goal.title")}
+                sub={t("onboarding.goal.sub")}
               >
                 <div className="space-y-2">
                   {(
-                    [
-                      ["hypertrophy", "Build muscle", "Hypertrophy focus"],
-                      ["fat-loss", "Lose body fat", "Higher-density work"],
-                      ["strength", "Get stronger", "Heavy compound bias"],
-                      ["general", "Stay sharp", "Balanced, sustainable"],
-                    ] as [Goal, string, string][]
-                  ).map(([id, label, sub]) => (
+                    ["hypertrophy", "fat-loss", "strength", "general"] as Goal[]
+                  ).map((id) => (
                     <Row
                       key={id}
                       active={profile.goal === id}
@@ -344,8 +344,8 @@ function Onboarding() {
                         update("goal", id);
                         setStage("capture");
                       }}
-                      title={label}
-                      sub={sub}
+                      title={t(`onboarding.goal.${id}.label`)}
+                      sub={t(`onboarding.goal.${id}.sub`)}
                     />
                   ))}
                 </div>
@@ -405,27 +405,27 @@ function Onboarding() {
 /* -------------------- Sub-components -------------------- */
 
 function Intro({ onStart }: { onStart: () => void }) {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-1 flex-col justify-between">
       <div className="pt-12">
         <span className="text-[10px] font-semibold uppercase tracking-[0.3em] text-primary">
-          90 seconds · 8 questions
+          {t("onboarding.intro.badge")}
         </span>
         <h1 className="mt-6 text-balance text-5xl font-bold leading-[0.95] tracking-display">
-          Let's learn
+          {t("onboarding.intro.title1")}
           <br />
-          your body.
+          {t("onboarding.intro.title2")}
         </h1>
         <p className="mt-6 max-w-sm text-pretty text-base font-light leading-relaxed text-muted-foreground">
-          A short, honest conversation. Then a body analysis. Then a program
-          built specifically for you — not for the average person.
+          {t("onboarding.intro.subtitle")}
         </p>
       </div>
       <button
         onClick={onStart}
         className="mt-8 rounded-full bg-primary py-4 text-sm font-bold text-primary-foreground transition-transform active:scale-95"
       >
-        Begin →
+        {t("onboarding.intro.begin")}
       </button>
     </div>
   );
@@ -442,6 +442,7 @@ function CaptureStep({
   onContinue: () => void;
   onSkip: () => void;
 }) {
+  const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
   const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -452,8 +453,8 @@ function CaptureStep({
   };
   return (
     <Step
-      title="One photo. That's it."
-      sub="A front-facing image lets FORM read your structure. It never leaves your device."
+      title={t("onboarding.capture.title")}
+      sub={t("onboarding.capture.sub")}
     >
       <div className="relative mb-4 aspect-[3/4] overflow-hidden rounded-3xl border border-border bg-surface">
         {photo ? (
@@ -461,7 +462,9 @@ function CaptureStep({
         ) : (
           <div className="flex size-full flex-col items-center justify-center gap-3 text-muted-foreground">
             <div className="size-16 rounded-full border border-dashed border-border" />
-            <span className="text-xs uppercase tracking-widest">No photo yet</span>
+            <span className="text-xs uppercase tracking-widest">
+              {t("onboarding.capture.noPhoto")}
+            </span>
           </div>
         )}
       </div>
@@ -478,16 +481,16 @@ function CaptureStep({
           onClick={() => inputRef.current?.click()}
           className="w-full rounded-full border border-border bg-surface-2 py-3 text-sm font-semibold"
         >
-          {photo ? "Replace photo" : "Upload or take photo"}
+          {photo ? t("onboarding.capture.replace") : t("onboarding.capture.upload")}
         </button>
         {photo ? (
-          <FooterButton onClick={onContinue}>Analyze my body →</FooterButton>
+          <FooterButton onClick={onContinue}>{t("onboarding.capture.analyze")}</FooterButton>
         ) : (
           <button
             onClick={onSkip}
             className="w-full py-3 text-xs uppercase tracking-widest text-muted-foreground hover:text-foreground"
           >
-            Skip — analyze from my answers
+            {t("onboarding.capture.skip")}
           </button>
         )}
       </div>
@@ -496,17 +499,18 @@ function CaptureStep({
 }
 
 function Analyzing({ photo }: { photo: string | null }) {
+  const { t } = useTranslation();
   const steps = [
-    "Reading structural cues",
-    "Estimating composition range",
-    "Mapping strong vs weak chains",
-    "Projecting realistic outcome",
+    t("onboarding.analyzing.steps.s1"),
+    t("onboarding.analyzing.steps.s2"),
+    t("onboarding.analyzing.steps.s3"),
+    t("onboarding.analyzing.steps.s4"),
   ];
   const [i, setI] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => setI((v) => Math.min(v + 1, steps.length - 1)), 900);
-    return () => clearInterval(t);
-  }, []);
+    const timer = setInterval(() => setI((v) => Math.min(v + 1, steps.length - 1)), 900);
+    return () => clearInterval(timer);
+  }, [steps.length]);
   return (
     <div className="flex flex-1 flex-col items-center justify-center pt-8 text-center">
       <div className="relative mb-10 size-48 overflow-hidden rounded-3xl border border-border bg-surface">
@@ -523,9 +527,11 @@ function Analyzing({ photo }: { photo: string | null }) {
         />
       </div>
       <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.3em] text-primary">
-        Analyzing
+        {t("onboarding.analyzing.badge")}
       </div>
-      <h2 className="mb-8 text-3xl font-bold tracking-display">Reading your body</h2>
+      <h2 className="mb-8 text-3xl font-bold tracking-display">
+        {t("onboarding.analyzing.title")}
+      </h2>
       <ul className="w-full space-y-2 text-left">
         {steps.map((s, idx) => (
           <li
@@ -538,7 +544,7 @@ function Analyzing({ photo }: { photo: string | null }) {
           >
             <span>{s}</span>
             <span className="font-mono text-[10px]">
-              {idx < i ? "DONE" : idx === i ? "···" : "—"}
+              {idx < i ? t("common.done") : idx === i ? "···" : "—"}
             </span>
           </li>
         ))}
@@ -554,22 +560,23 @@ function Results({
   analysis: NonNullable<UserProfile["analysis"]>;
   onContinue: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-1 flex-col">
       <span className="text-[10px] font-semibold uppercase tracking-[0.3em] text-primary">
-        Body intelligence · v1
+        {t("onboarding.results.badge")}
       </span>
       <h1 className="mt-3 text-balance text-4xl font-bold leading-tight tracking-display">
-        Here's what FORM sees.
+        {t("onboarding.results.title")}
       </h1>
       <p className="mt-3 text-sm text-muted-foreground">
-        Observations — not absolutes. These refine every week you train.
+        {t("onboarding.results.subtitle")}
       </p>
 
       <div className="surface-card mt-6 overflow-hidden rounded-3xl bg-primary p-1">
         <div className="rounded-[20px] bg-background p-6">
           <div className="text-[10px] font-semibold uppercase tracking-[0.25em] text-primary">
-            Projected outcome
+            {t("onboarding.results.projected")}
           </div>
           <p className="mt-3 text-balance text-xl font-semibold leading-snug">
             {analysis.projection}
@@ -579,21 +586,24 @@ function Results({
 
       <div className="mt-4 grid gap-3">
         <Insight
-          label="Estimated body fat"
+          label={t("onboarding.results.bodyFat")}
           value={`${analysis.bodyFatRange[0]}–${analysis.bodyFatRange[1]}%`}
-          sub="Range — not a fake decimal."
+          sub={t("onboarding.results.bodyFatSub")}
         />
         <Insight
-          label="Strong groups"
+          label={t("onboarding.results.strong")}
           value={analysis.strongMuscleGroups.join(" · ")}
         />
-        <Insight label="Weak points" value={analysis.weakPoints.join(" · ")} />
-        <Insight label="Symmetry" value={analysis.symmetry} />
-        <Insight label="Posture" value={analysis.posture} />
-        <Insight label="Athletic potential" value={analysis.potential} />
+        <Insight
+          label={t("onboarding.results.weak")}
+          value={analysis.weakPoints.join(" · ")}
+        />
+        <Insight label={t("onboarding.results.symmetry")} value={analysis.symmetry} />
+        <Insight label={t("onboarding.results.posture")} value={analysis.posture} />
+        <Insight label={t("onboarding.results.potential")} value={analysis.potential} />
       </div>
 
-      <FooterButton onClick={onContinue}>Build my program →</FooterButton>
+      <FooterButton onClick={onContinue}>{t("onboarding.results.buildProgram")}</FooterButton>
     </div>
   );
 }
@@ -619,17 +629,18 @@ function Insight({
 }
 
 function Generating() {
+  const { t } = useTranslation();
   const steps = [
-    "Analyzing recovery profile",
-    "Adapting to available equipment",
-    "Building progression systems",
-    "Optimizing training volume",
+    t("onboarding.generating.steps.s1"),
+    t("onboarding.generating.steps.s2"),
+    t("onboarding.generating.steps.s3"),
+    t("onboarding.generating.steps.s4"),
   ];
   const [i, setI] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => setI((v) => Math.min(v + 1, steps.length - 1)), 900);
-    return () => clearInterval(t);
-  }, []);
+    const timer = setInterval(() => setI((v) => Math.min(v + 1, steps.length - 1)), 900);
+    return () => clearInterval(timer);
+  }, [steps.length]);
   return (
     <div className="flex flex-1 flex-col items-center justify-center pt-8 text-center">
       <motion.div
@@ -646,10 +657,10 @@ function Generating() {
         }}
       />
       <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.3em] text-primary">
-        Generating program
+        {t("onboarding.generating.badge")}
       </div>
       <h2 className="mb-8 text-3xl font-bold tracking-display">
-        Building your system
+        {t("onboarding.generating.title")}
       </h2>
       <ul className="w-full space-y-2 text-left">
         {steps.map((s, idx) => (
@@ -663,7 +674,7 @@ function Generating() {
           >
             <span>{s}</span>
             <span className="font-mono text-[10px]">
-              {idx < i ? "DONE" : idx === i ? "···" : "—"}
+              {idx < i ? t("common.done") : idx === i ? "···" : "—"}
             </span>
           </li>
         ))}
@@ -680,25 +691,50 @@ function PlanReveal({
   onUnlock: () => void;
   onContinue: () => void;
 }) {
+  const { t } = useTranslation();
   const splitMap: Record<number, string[]> = {
-    2: ["Full body A", "Full body B"],
-    3: ["Push", "Pull", "Legs"],
-    4: ["Upper A", "Lower A", "Upper B", "Lower B"],
-    5: ["Push", "Pull", "Legs", "Upper", "Lower"],
-    6: ["Push", "Pull", "Legs", "Push", "Pull", "Legs"],
+    2: [
+      t("onboarding.plan.splits.fullBodyA"),
+      t("onboarding.plan.splits.fullBodyB"),
+    ],
+    3: [
+      t("onboarding.plan.splits.push"),
+      t("onboarding.plan.splits.pull"),
+      t("onboarding.plan.splits.legs"),
+    ],
+    4: [
+      t("onboarding.plan.splits.upperA"),
+      t("onboarding.plan.splits.lowerA"),
+      t("onboarding.plan.splits.upperB"),
+      t("onboarding.plan.splits.lowerB"),
+    ],
+    5: [
+      t("onboarding.plan.splits.push"),
+      t("onboarding.plan.splits.pull"),
+      t("onboarding.plan.splits.legs"),
+      t("onboarding.plan.splits.upper"),
+      t("onboarding.plan.splits.lower"),
+    ],
+    6: [
+      t("onboarding.plan.splits.push"),
+      t("onboarding.plan.splits.pull"),
+      t("onboarding.plan.splits.legs"),
+      t("onboarding.plan.splits.push"),
+      t("onboarding.plan.splits.pull"),
+      t("onboarding.plan.splits.legs"),
+    ],
   };
   const split = splitMap[profile.frequency] ?? splitMap[4];
   return (
     <div className="flex flex-1 flex-col">
       <span className="text-[10px] font-semibold uppercase tracking-[0.3em] text-primary">
-        Your program · v1
+        {t("onboarding.plan.badge")}
       </span>
       <h1 className="mt-3 text-balance text-4xl font-bold leading-tight tracking-display">
-        Built around you.
+        {t("onboarding.plan.title")}
       </h1>
       <p className="mt-3 max-w-sm text-sm text-muted-foreground">
-        {profile.frequency}-day split, calibrated to your equipment, weak points,
-        and recovery capacity. It evolves every session.
+        {t("onboarding.plan.subtitle", { days: profile.frequency })}
       </p>
 
       <div className="surface-card mt-6 rounded-3xl p-2">
@@ -714,19 +750,19 @@ function PlanReveal({
               <span className="text-sm font-semibold">{day}</span>
             </div>
             <span className="text-[10px] font-semibold uppercase tracking-widest text-primary">
-              Adaptive
+              {t("common.adaptive")}
             </span>
           </div>
         ))}
       </div>
 
       <div className="mt-4 grid grid-cols-3 gap-2">
-        <Stat label="Equipment" value={`${profile.equipment.length}`} />
-        <Stat label="Duration" value={`${profile.duration}m`} />
-        <Stat label="Days/wk" value={`${profile.frequency}`} />
+        <Stat label={t("onboarding.plan.equipment")} value={`${profile.equipment.length}`} />
+        <Stat label={t("onboarding.plan.duration")} value={`${profile.duration}m`} />
+        <Stat label={t("onboarding.plan.daysPerWeek")} value={`${profile.frequency}`} />
       </div>
 
-      <FooterButton onClick={onUnlock}>Unlock my system →</FooterButton>
+      <FooterButton onClick={onUnlock}>{t("onboarding.plan.unlock")}</FooterButton>
     </div>
   );
 }
@@ -749,27 +785,27 @@ function Paywall({
   onUnlock: () => void;
   onContinueFree: () => void;
 }) {
+  const { t } = useTranslation();
   const features = [
-    "Adaptive AI program — recalibrates weekly",
-    "Body intelligence + transformation tracking",
-    "Recovery-aware volume adjustments",
-    "Unlimited AI coach conversations",
-    "Real-time equipment substitutions",
-    "Full progression analytics",
+    t("onboarding.paywall.features.f1"),
+    t("onboarding.paywall.features.f2"),
+    t("onboarding.paywall.features.f3"),
+    t("onboarding.paywall.features.f4"),
+    t("onboarding.paywall.features.f5"),
+    t("onboarding.paywall.features.f6"),
   ];
   return (
     <div className="flex flex-1 flex-col">
       <span className="text-[10px] font-semibold uppercase tracking-[0.3em] text-primary">
-        Your system is ready
+        {t("onboarding.paywall.badge")}
       </span>
       <h1 className="mt-3 text-balance text-4xl font-bold leading-tight tracking-display">
-        Unlock your
+        {t("onboarding.paywall.title1")}
         <br />
-        adaptive system.
+        {t("onboarding.paywall.title2")}
       </h1>
       <p className="mt-3 max-w-sm text-sm text-muted-foreground">
-        You've seen the analysis. You've seen the plan. Premium turns FORM into
-        a system that follows your journey — not just a tracker.
+        {t("onboarding.paywall.subtitle")}
       </p>
 
       <div className="surface-card mt-6 overflow-hidden rounded-3xl bg-primary p-1">
@@ -777,18 +813,20 @@ function Paywall({
           <div className="flex items-baseline justify-between">
             <div>
               <div className="text-[10px] font-semibold uppercase tracking-[0.25em] text-primary">
-                Premium
+                {t("onboarding.paywall.premium")}
               </div>
               <div className="mt-2 flex items-baseline gap-1">
                 <span className="text-5xl font-bold tracking-display">$14</span>
-                <span className="text-sm text-muted-foreground">/month</span>
+                <span className="text-sm text-muted-foreground">
+                  {t("onboarding.paywall.perMonth")}
+                </span>
               </div>
               <div className="text-xs text-muted-foreground">
-                or $99/year · cancel anytime
+                {t("onboarding.paywall.pricing")}
               </div>
             </div>
             <span className="rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-primary">
-              7-day trial
+              {t("onboarding.paywall.trial")}
             </span>
           </div>
 
@@ -808,13 +846,13 @@ function Paywall({
           onClick={onUnlock}
           className="w-full rounded-full bg-primary py-4 text-sm font-bold text-primary-foreground transition-transform active:scale-95"
         >
-          Start 7-day trial →
+          {t("onboarding.paywall.startTrial")}
         </button>
         <button
           onClick={onContinueFree}
           className="w-full py-3 text-xs uppercase tracking-widest text-muted-foreground hover:text-foreground"
         >
-          Continue with limited access
+          {t("onboarding.paywall.continueFree")}
         </button>
       </div>
     </div>
