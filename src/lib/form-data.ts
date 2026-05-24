@@ -116,6 +116,27 @@ export interface PlannedExercise {
   rpe: number;
 }
 
+export type Physique = "lean" | "athletic" | "average" | "soft" | "stocky";
+export type Frustration =
+  | "no-results"
+  | "no-time"
+  | "no-energy"
+  | "plateau"
+  | "lost-motivation"
+  | "injury-prone";
+export type Location = "commercial-gym" | "home-gym" | "hotel-travel" | "hybrid";
+
+export interface BodyAnalysis {
+  bodyFatRange: [number, number];
+  strongMuscleGroups: string[];
+  weakPoints: string[];
+  symmetry: string;
+  posture: string;
+  potential: string;
+  projection: string;
+  generatedAt: number;
+}
+
 export interface UserProfile {
   goal: Goal;
   experience: Experience;
@@ -123,6 +144,11 @@ export interface UserProfile {
   duration: number;
   injuries: Injury[];
   equipment: Equipment[];
+  physique?: Physique;
+  frustration?: Frustration;
+  location?: Location;
+  analysis?: BodyAnalysis;
+  premium?: boolean;
 }
 
 export const DEFAULT_PROFILE: UserProfile = {
@@ -133,6 +159,60 @@ export const DEFAULT_PROFILE: UserProfile = {
   injuries: ["none"],
   equipment: ["dumbbells", "barbells", "cables", "bench", "pull-up-bar", "hack-squat"],
 };
+
+export function buildAnalysis(p: Partial<UserProfile>): BodyAnalysis {
+  const physique = p.physique ?? "average";
+  const bf: Record<Physique, [number, number]> = {
+    lean: [10, 14],
+    athletic: [13, 17],
+    average: [17, 22],
+    soft: [22, 28],
+    stocky: [20, 26],
+  };
+  const weak: Record<Physique, string[]> = {
+    lean: ["Posterior chain", "Upper back density"],
+    athletic: ["Rear delts", "Hamstring volume"],
+    average: ["Glute activation", "Mid-back thickness"],
+    soft: ["Core stability", "Conditioning base"],
+    stocky: ["Mobility", "Shoulder symmetry"],
+  };
+  const strong: Record<Physique, string[]> = {
+    lean: ["Calves", "Forearms"],
+    athletic: ["Quads", "Chest"],
+    average: ["Arms", "Anterior delts"],
+    soft: ["Lower body base strength"],
+    stocky: ["Pressing strength", "Trap development"],
+  };
+  const goal = p.goal ?? "hypertrophy";
+  const months = 4;
+  const projection =
+    goal === "fat-loss"
+      ? `At your reported consistency, a realistic ${months}-month outcome is 6–8 kg of fat loss with visible waist definition.`
+      : goal === "strength"
+        ? `At your reported consistency, expect 15–25% increases on primary lifts within ${months} months.`
+        : goal === "hypertrophy"
+          ? `At your reported consistency, 2–3 kg of lean tissue gain and visible upper-body separation are realistic over ${months} months.`
+          : `Within ${months} months of consistent training, expect noticeable composition shifts and meaningful conditioning gains.`;
+  return {
+    bodyFatRange: bf[physique],
+    strongMuscleGroups: strong[physique],
+    weakPoints: weak[physique],
+    symmetry:
+      physique === "athletic" || physique === "lean"
+        ? "Minor left-side dominance detected. Unilateral work programmed."
+        : "Symmetry within normal range. No structural correction needed.",
+    posture:
+      physique === "soft" || physique === "stocky"
+        ? "Mild anterior pelvic tilt indicators — posterior chain emphasis prioritized."
+        : "Neutral alignment indicators. Standard programming applies.",
+    potential:
+      physique === "athletic"
+        ? "Power/aesthetic hybrid track — high responder profile."
+        : "Hypertrophy-leaning responder with sustainable recovery capacity.",
+    projection,
+    generatedAt: Date.now(),
+  };
+}
 
 const PATTERN_ORDER: Pattern[] = [
   "horizontal-press",
