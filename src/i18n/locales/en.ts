@@ -520,4 +520,4 @@ export const en = {
       stocky: ["Mobility", "Shoulder symmetry"],
     },
   },
-} as const;
+};
